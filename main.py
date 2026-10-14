@@ -1,9 +1,13 @@
 import requests
 import json
+import os
+from dotenv import load_dotenv
 
+# 自动加载。env文件里的变量
+load_dotenv()
 
 # 1.配置API信息
-API_KEY = "你的API_KEY"
+API_KEY = os.getenv("ZHIPU_API_KEY")
 URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions" # URL是什么，怎么决定填写什么的
 
 
@@ -17,10 +21,10 @@ headers = {
 data = {
     "model": "glm-4-flash",
     "messages": [
-        {"role": "system", "content": "你是一个只有7岁智商的小朋友，说话很喜欢用感叹号！"},
-        {"role": "user", "content": "请用一句话给我讲个关于程序员的冷笑话。"}
-    ]  # []叫列表
-    # 这个是叫提示词prompt吗？  准确来说data是一份请求体，content内容是prompt
+        {"role": "system", "content": "你是一个残酷无情的面试官，只看硬技能，绝不心软。你必须输出纯JSON格式的数据，不要任何多余的解释，不要加Markdown代码块标记（不要```json）。格式为：{'得分': 0到100的数字, '优点': ['优点1', '优点2'], '缺点': ['缺点1'], '是否通过': true或false}"},
+        {"role": "user", "content": "这是我的面试自我介绍：'我今年刚毕业，只会一点点Python，还没做过项目，但我很愿意学。' 请根据我的表现打分。"}
+    ],
+    "response_format": {"type": "json_object"} # 强迫模型输出 JSON 对象
 }
 
 # 3.发送请求
@@ -32,15 +36,19 @@ response = requests.post(URL, headers=headers, json=data)
 # 4.处理返回结果
 if response.status_code == 200:
     result = response.json()
-    ai_reply = result['choices'][0]['message']['content']
-    print("\n=== AI 的回复 ===\n")
-    print(ai_reply)
-elif response.status_code == 401:
-    print("错误：API Key 无效，请检查你的 Key 是否正确。")
-elif response.status_code == 402:
-    print("错误：余额不足。")
-elif response.status_code == 429:
-    print("错误：请求太频繁，被限流了。")
+    # 注意：拿到的是字符串（String）
+    content_str = result['choices'][0]['message']['content']
+    print("原始返回：", content_str)
+
+    # 【核心知识点】用 json.loads() 把字符串转换成 Python 字典
+    content_dict = json.loads(content_str)
+
+    # 现在可以用字典的方式取值了
+    print("\n=== 面试结果 ===")
+    print("得分：", content_dict.get("得分"))
+    print("优点：", content_dict.get("优点"))
+    print("缺点：", content_dict.get("缺点"))
+    print("是否通过：", "通过" if content_dict.get("是否通过") else "淘汰")
 else:
-    print(f"未知错误，状态码：{response.status_code}")
+    print("请求失败，错误码：", response.status_code)
     print(response.text)
