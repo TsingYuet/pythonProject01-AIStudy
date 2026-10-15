@@ -50,3 +50,32 @@ def get_interview_evaluation(user_input: str):
     content_dict = json.loads(content_str)
 
     return content_dict
+
+
+def get_knowledge_answer(user_question: str, context: str) -> str:
+    """根据给定的资料（context）回答用户问题，直接返回自然语言文本"""
+    data = {
+        "model": "glm-4-flash",
+        "messages": [
+            {
+                "role": "system",
+                "content": "你是一个企业知识库助手，请严格根据提供的资料回答问题。如果资料中没有相关信息，请直接回答'根据现有资料，我无法回答这个问题'。不要自己编造。"
+            },
+            {
+                "role": "user",
+                "content": f"资料：\n{context}\n\n问题：{user_question}"
+            }
+        ]
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {API_KEY}"
+    }
+
+    response = requests.post(URL, headers=headers, json=data, timeout=30)
+    if response.status_code != 200:
+        raise Exception(f"API请求失败，状态码：{response.status_code}，信息：{response.text}")
+
+    result = response.json()
+    # 这里不需要解析 JSON，直接拿文字结果返回
+    return result['choices'][0]['message']['content']
